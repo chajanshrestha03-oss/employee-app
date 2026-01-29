@@ -1,10 +1,17 @@
 from flask import Flask, render_template, request, jsonify
 import sqlite3
 import datetime
-import pywhatkit
 import threading
 import time
 import os
+
+# Try importing pywhatkit, but don't crash if it fails (common in server environments)
+try:
+    import pywhatkit
+    HAS_PYWHATKIT = True
+except (ImportError, Exception):
+    HAS_PYWHATKIT = False
+    print("Warning: pywhatkit could not be imported. WhatsApp automation disabled.")
 
 app = Flask(__name__)
 DB_NAME = "database.db"
@@ -166,6 +173,10 @@ def add_employee():
 # --- WhatsApp Automation ---
 
 def send_whatsapp_thread(phone_number, message):
+    if not HAS_PYWHATKIT:
+        print(f"Skipping WhatsApp to {phone_number}: pywhatkit not available")
+        return
+
     try:
         pywhatkit.sendwhatmsg_instantly(
             phone_no=phone_number, 
@@ -179,6 +190,10 @@ def send_whatsapp_thread(phone_number, message):
         print(f"Error sending WhatsApp: {e}")
 
 def send_whatsapp_group_thread(group_id, message):
+    if not HAS_PYWHATKIT:
+        print(f"Skipping Group WhatsApp to {group_id}: pywhatkit not available")
+        return
+
     try:
         pywhatkit.sendwhatmsg_to_group_instantly(
             group_id=group_id,
@@ -295,15 +310,8 @@ def take_shift_request(id):
     msg = f"{taker_name} has taken the shift for {date}"
     
     if GROUP_ID:
-        try:
-            threading.Thread(target=pywhatkit.sendwhatmsg_to_group_instantly, 
-                             args=(GROUP_ID, msg, 15, True, 3)).start()
-            print(f"Group WhatsApp queued for: {GROUP_ID}")
-        except Exception as e:
-            print(f"Error queuing Group WhatsApp: {e}")
-            # Fallback to direct msg if phone exists
-            if taker_phone:
-                threading.Thread(target=send_whatsapp_thread, args=(taker_phone, msg)).start()
+        # Use the safe wrapper function
+        threading.Thread(target=send_whatsapp_group_thread, args=(GROUP_ID, msg)).start()
     elif taker_phone:
          threading.Thread(target=send_whatsapp_thread, args=(taker_phone, msg)).start()
     
@@ -476,7 +484,9 @@ def get_dashboard_stats():
         "unpaid_count": paid_status[0]
     })
 
+# Initialize DB on module import (ensures tables exist when running with Gunicorn)
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     # Host 0.0.0.0 allows access from other devices on the network
     app.run(debug=True, host='0.0.0.0', port=5000)
