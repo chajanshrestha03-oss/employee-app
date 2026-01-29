@@ -14,7 +14,9 @@ except (ImportError, Exception):
     print("Warning: pywhatkit could not be imported. WhatsApp automation disabled.")
 
 app = Flask(__name__)
-DB_NAME = "database.db"
+# Use absolute path for DB to avoid CWD issues in production
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_NAME = os.path.join(BASE_DIR, "database.db")
 # NOTE: pywhatkit usually requires the Group Invite Link ID (e.g., 'AbC123...'), not the name.
 # 'Namaste Momo Lunch Menu Group' is likely the name. If automation fails, replace this with the Invite Link ID.
 GROUP_ID = "Namaste Momo Lunch Menu Group" 
