@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Tracker</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Chart.js for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    
+    <!-- Login View -->
+    <div class="container" id="login-view">
+        <div class="card" style="max-width: 400px; margin: 50px auto;">
+            <h1>Login</h1>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                </div>
+                <button type="submit" style="width: 100%;">Login</button>
+                <p style="text-align: center; margin-top: 10px; font-size: 0.9em; color: #666;">
+                    Default Admin: admin / admin123<br>
+                    Employee: First Name / password123
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- App View (Hidden until login) -->
+    <div id="app-view" class="hidden">
+        <div class="navbar">
+            <span class="brand">EmpTrack</span>
+            <div class="roles">
+                <span id="user-display" style="margin-right: 15px;"></span>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="container hidden" id="admin-view">
+            <h1>Admin Dashboard</h1>
+            
+            <!-- Dashboard Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Payroll Owed</h3>
+                    <p id="stat-payroll">$0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Hours (Week)</h3>
+                    <p id="stat-hours">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Top Performer</h3>
+                    <p id="stat-top">-</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Payment Status</h3>
+                <canvas id="paymentChart" style="max-height: 200px;"></canvas>
+            </div>
+
+            <div class="card">
+                <h2>Add New Employee</h2>
+                <form id="add-employee-form">
+                    <div class="form-group">
+                        <label for="name">Name:</label>
+                        <input type="text" id="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="role">Role:</label>
+                        <input type="text" id="role" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone (with country code, e.g., +614...):</label>
+                        <input type="text" id="phone" placeholder="+61412345678">
+                    </div>
+                    <button type="submit">Add Employee</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Employee List</h2>
+                <table id="employee-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Credentials (Auto)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Employees will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <div class="tab-nav" style="margin-bottom: 20px; border-bottom: 2px solid #ddd;">
+                    <button class="tab-btn active" onclick="switchAdminTab('logs')" id="tab-logs">Work Logs & Notes</button>
+                    <button class="tab-btn" onclick="switchAdminTab('payroll')" id="tab-payroll">Payroll & Payments</button>
+                </div>
+
+                <!-- Tab 1: Work Logs & Notes (Communication View) -->
+                <div id="view-logs">
+                    <h2>Admin Notes & Communication</h2>
+                    
+                    <div class="card" style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #28a745;">
+                        <h3>Quick Actions</h3>
+                        <a href="https://wa.me/?text=Hello%20Team%2C%20please%20send%20daily%20cleaning%20pictures%20and%20prep%20needs%20for%20tomorrow." 
+                           target="_blank" 
+                           class="whatsapp-btn" 
+                           style="display: block; text-align: center; text-decoration: none; margin-bottom: 15px;">
+                            Send Daily Cleaning & Prep Reminder
+                        </a>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Send Custom Message to Group</h3>
+                        <textarea id="custom-whatsapp-msg" rows="4" placeholder="Type your message here..." style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                        <button onclick="sendCustomWhatsApp()" style="width: 100%; background-color: #25D366; color: white; border: none;">
+                            Send to WhatsApp Group
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Payroll (Weekly View) -->
+                <div id="view-payroll" class="hidden">
+                    <h2>Payroll & Payments</h2>
+                    <table id="logs-table">
+                        <thead>
+                            <tr>
+                                <th>Week Range</th>
+                                <th>Employee</th>
+                                <th>Total Hours</th>
+                                <th>Cost ($20/hr)</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Weekly logs loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="container hidden" id="employee-view">
+            <h1>Employee Portal</h1>
+            
+            <div class="tab-nav" style="margin-bottom: 20px; border-bottom: 2px solid #ddd;">
+                <button class="tab-btn active" onclick="switchEmployeeTab('log')" id="tab-emp-log">Log Work</button>
+                <button class="tab-btn" onclick="switchEmployeeTab('swap')" id="tab-emp-swap">Shift Swap Board</button>
+            </div>
+
+            <!-- Tab 1: Log Work -->
+            <div id="view-emp-log">
+                <div class="card">
+                    <h2>Log Work / Attendance</h2>
+                    <form id="log-work-form">
+                        <!-- Hidden field for employee ID, set automatically -->
+                        <input type="hidden" id="log-employee-id">
+                        
+                        <div class="form-group">
+                            <label>Employee Name:</label>
+                            <input type="text" id="log-employee-name" readonly style="background-color: #eee;">
+                        </div>
+                        <div class="form-group">
+                            <label for="log-date">Date:</label>
+                            <input type="date" id="log-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="log-hours">Hours Worked (Default: 7):</label>
+                            <input type="number" id="log-hours" value="7" step="0.5" min="0">
+                            <small>Standard shift: 2pm - 9pm (7 hours)</small>
+                        </div>
+                        <button type="submit">Submit Log</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tab 2: Shift Swap -->
+            <div id="view-emp-swap" class="hidden">
+                <div class="card" style="border-left: 4px solid #ffc107;">
+                    <h2>Request Cover</h2>
+                    <p>Can't work a shift? Post it here for others to pick up.</p>
+                    <div style="display: flex; gap: 10px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label>Date needing cover:</label>
+                            <input type="date" id="swap-date">
+                        </div>
+                        <button onclick="postShiftRequest()" style="background-color: #ffc107; color: #000;">Post Request</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Available Shifts to Pick Up</h2>
+                    <table id="swap-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Posted By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
