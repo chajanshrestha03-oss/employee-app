@@ -339,26 +339,16 @@ async function payWeek(logIds) {
             loadWorkLogsPayroll(); // Refresh current tab
             loadDashboardStats();
             
-            // Send WhatsApp Notification
-            if (result.employees && result.employees.length > 0) {
-                // Now handled via automation if phone exists, otherwise manual link
-                // For now, we will try to automate if possible, but we don't have phone numbers here easily
-                // Wait, batch-pay returns names. We should update batch-pay to return phone numbers too.
-                // For now, let's keep the manual link as backup, or fetch phone numbers.
-                
-                // Let's rely on the user to use the manual link for GROUP announcements,
-                // but for individual payment, the user asked for automation.
-                // We need to fetch the phone number for the employee being paid.
-                // Since batch pay might pay multiple people, automation is complex.
-                // Let's assume 1 person per week usually.
-                
-                // Updated Logic: Call backend to automate sending
-                // We need to know WHO was paid. 'result.employees' has names.
-                // We need IDs or Phone numbers.
-                
-                // Alert user about success
-                alert(`Payment recorded for: ${result.employees.join(', ')}`);
+            // Send WhatsApp Notification (Client-side redirection for Group)
+            if (result.whatsapp_group_message) {
+                const text = encodeURIComponent(result.whatsapp_group_message);
+                // Open WhatsApp Group with pre-filled text
+                // Note: The user selects the group in WhatsApp
+                window.open(`https://wa.me/?text=${text}`, '_blank');
             }
+            
+            // Alert user about success
+            alert(`Payment recorded for: ${result.employees.join(', ')}`);
         } else {
             alert('Failed to update payment status');
         }

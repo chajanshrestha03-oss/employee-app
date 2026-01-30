@@ -417,15 +417,28 @@ def batch_pay_logs():
     rows = cursor.fetchall()
     employees = [row[0] for row in rows]
     
-    # Automate WhatsApp for each employee with a phone number
+    # Prepare messages
+    whatsapp_messages = []
+    
+    # Automate WhatsApp for each employee
     for row in rows:
         name = row[0]
         phone = row[1]
-        if phone:
-            msg = f"{name} your pay is ready to collect"
-            # Launch in thread to avoid blocking
+        
+        # Message format: "{Name} your pay is ready to collect"
+        msg = f"{name} your pay is ready to collect"
+        whatsapp_messages.append(msg)
+
+        # 1. Try sending to Individual (Optional, keep existing logic if phone exists)
+        if phone and HAS_PYWHATKIT:
             threading.Thread(target=send_whatsapp_thread, args=(phone, msg)).start()
-            print(f"Queued WhatsApp for {name} ({phone})")
+            print(f"Queued Individual WhatsApp for {name}")
+
+    # 2. Try sending to Group (Server-side if possible)
+    full_msg = " ".join(whatsapp_messages)
+    if GROUP_ID and HAS_PYWHATKIT:
+         threading.Thread(target=send_whatsapp_group_thread, args=(GROUP_ID, full_msg)).start()
+         print(f"Queued Group WhatsApp: {full_msg}")
 
     # Mark all provided IDs as paid
     sql = f"UPDATE work_logs SET is_paid = 1 WHERE id IN ({placeholders})"
@@ -438,7 +451,8 @@ def batch_pay_logs():
     return jsonify({
         "message": f"Successfully marked {rows_affected} logs as paid", 
         "count": rows_affected,
-        "employees": employees
+        "employees": employees,
+        "whatsapp_group_message": full_msg # Return for client-side redirection
     }), 200
 
 @app.route('/api/dashboard/stats', methods=['GET'])
