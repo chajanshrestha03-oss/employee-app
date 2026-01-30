@@ -405,28 +405,46 @@ def batch_pay_logs():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Get employee names and phones before updating
+    # Get employee details and log dates to calculate pay period
     placeholders = ','.join('?' * len(log_ids))
     cursor.execute(f'''
-        SELECT DISTINCT e.name, e.phone
+        SELECT e.id, e.name, e.phone, w.date
         FROM work_logs w
         JOIN employees e ON w.employee_id = e.id
         WHERE w.id IN ({placeholders})
+        ORDER BY w.date ASC
     ''', log_ids)
     
     rows = cursor.fetchall()
-    employees = [row[0] for row in rows]
     
-    # Prepare messages
+    # Group by employee to calculate date ranges
+    employee_payments = {}
+    for row in rows:
+        emp_id, name, phone, date = row
+        if emp_id not in employee_payments:
+            employee_payments[emp_id] = {
+                'name': name,
+                'phone': phone,
+                'dates': []
+            }
+        employee_payments[emp_id]['dates'].append(date)
+    
+    employees = []
     whatsapp_messages = []
     
     # Automate WhatsApp for each employee
-    for row in rows:
-        name = row[0]
-        phone = row[1]
+    for emp_id, data in employee_payments.items():
+        name = data['name']
+        phone = data['phone']
+        dates = sorted(data['dates'])
         
-        # Message format: "{Name} your pay is ready to collect"
-        msg = f"{name} your pay is ready to collect"
+        start_date = dates[0]
+        end_date = dates[-1]
+        
+        employees.append(name)
+        
+        # Message format: "{Name} your pay is ready to collect ({start}/{end})"
+        msg = f"{name} your pay is ready to collect ({start_date}/{end_date})"
         whatsapp_messages.append(msg)
 
         # 1. Try sending to Individual (Optional, keep existing logic if phone exists)
